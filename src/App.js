@@ -24,7 +24,7 @@ export default function App() {
       console.log('Events response:', eventsText.substring(0, 200));
       const allEvents = JSON.parse(eventsText);
 
-      const peopleRes = await fetch(`${BASE}/Divisions/${divisionId}/people?ApiKey=${apiKey}`);
+      const peopleRes = await fetch(`${BASE}/Companies/2/people?ApiKey=${apiKey}`);
       const peopleText = await peopleRes.text();
       console.log('People response:', peopleText.substring(0, 200));
       const allPeople = JSON.parse(peopleText);
@@ -213,7 +213,7 @@ export default function App() {
                 </tr>
               </thead>
               <tbody>
-                {events.slice(0, 20).map(e => (
+                {events.filter(e => csvData.some(r => Object.values(r).includes(e.documentNumber))).slice(0, 20).map(e => (
                   <tr key={e.eventId}>
                     <td className="doc-num">{e.documentNumber}</td>
                     <td>{e.title?.substring(0, 40)}</td>
