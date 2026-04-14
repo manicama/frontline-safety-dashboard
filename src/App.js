@@ -39,12 +39,21 @@ export default function App() {
     setLoading(false);
   }
 
-  function handleCSV(e) {
+ function handleCSV(e) {
     const file = e.target.files[0];
     Papa.parse(file, {
       header: true,
       skipEmptyLines: true,
-      complete: (results) => setCsvData(results.data)
+      beforeFirstChunk: (chunk) => {
+        const rows = chunk.split('\n');
+        rows.splice(0, 2);
+        return rows.join('\n');
+      },
+      complete: (results) => {
+        console.log('First CSV row:', results.data[0]);
+        console.log('CSV keys:', Object.keys(results.data[0]));
+        setCsvData(results.data);
+      }
     });
   }
 
