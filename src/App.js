@@ -3,7 +3,7 @@ import Papa from 'papaparse';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import './App.css';
 
-const BASE = 'https://ehsapi.fldata.com/api/v1';
+const BASE = '/api/v1';
 
 export default function App() {
   const [apiKey, setApiKey] = useState('BE83781BCE80465CBD967FBA2E14E57B');
@@ -19,12 +19,16 @@ export default function App() {
     setLoading(true);
     setError('');
     try {
-      const [eventsRes, peopleRes] = await Promise.all([
-        fetch(`${BASE}/Events?ApiKey=${apiKey}`),
-        fetch(`${BASE}/Divisions/${divisionId}/people?ApiKey=${apiKey}`)
-      ]);
-      const allEvents = await eventsRes.json();
-      const allPeople = await peopleRes.json();
+      const eventsRes = await fetch(`${BASE}/Events?ApiKey=${apiKey}`);
+      const eventsText = await eventsRes.text();
+      console.log('Events response:', eventsText.substring(0, 200));
+      const allEvents = JSON.parse(eventsText);
+
+      const peopleRes = await fetch(`${BASE}/Divisions/${divisionId}/people?ApiKey=${apiKey}`);
+      const peopleText = await peopleRes.text();
+      console.log('People response:', peopleText.substring(0, 200));
+      const allPeople = JSON.parse(peopleText);
+
       const filtered = allEvents.filter(e => String(e.divisionID) === String(divisionId));
       setEvents(filtered);
       setPeople(allPeople);
