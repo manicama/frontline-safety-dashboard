@@ -47,7 +47,7 @@ export default function App() {
       const peopleText = await peopleRes.text();
       const allPeople = JSON.parse(peopleText);
 
-      const filtered = allEvents;
+      const filtered = allEvents.filter(e => !e.voided);
       setEvents(filtered);
       setPeople(allPeople);
       setLoaded(true);
@@ -103,10 +103,14 @@ export default function App() {
     ? ((nearMissEvents.length / events.length) * 100).toFixed(1)
     : null;
 
+  const csvMatchedEvents = events.filter(e =>
+    csvData.some(r => Object.values(r).includes(e.documentNumber))
+  );
+
   const pieData = csvData.length ? [
     { name: 'DART', value: dartEvents.length },
     { name: 'Recordable (non-DART)', value: recordable.length - dartEvents.length },
-    { name: 'Not Recordable', value: events.length - recordable.length },
+    { name: 'Not Recordable', value: csvMatchedEvents.length - recordable.length },
   ] : [];
 
   const COLORS = ['#ef9f27', '#378add', '#c8d0dc'];
@@ -175,8 +179,8 @@ export default function App() {
             </div>
             <div className="kpi-card green">
               <div className="kpi-label">Total Events</div>
-              <div className="kpi-value">{events.length}</div>
-              <div className="kpi-sub">Division {divisionId}</div>
+              <div className="kpi-value">{csvData.length ? csvMatchedEvents.length : '—'}</div>
+              <div className="kpi-sub">Division: Denver</div>
             </div>
             <div className="kpi-card red">
               <div className="kpi-label">Recordable</div>
@@ -287,7 +291,7 @@ export default function App() {
           </div>
 
           <div className="table-card">
-            <h3>Event Log ({events.filter(e => csvData.some(r => Object.values(r).includes(e.documentNumber))).length} events)</h3>
+            <h3>Event Log ({csvMatchedEvents.length} events)</h3>
             <table>
               <thead>
                 <tr>
@@ -300,31 +304,28 @@ export default function App() {
                 </tr>
               </thead>
               <tbody>
-                {events
-                  .filter(e => csvData.some(r => Object.values(r).includes(e.documentNumber)))
-                  .slice(0, 20)
-                  .map(e => (
-                    <tr key={e.eventId}>
-                      <td className="doc-num">{e.documentNumber}</td>
-                      <td>{e.title?.substring(0, 40)}</td>
-                      <td>{e.dateDrafted?.substring(0, 10)}</td>
-                      <td>{e.stage?.trim()}</td>
-                      <td>
-                        {isRecordable(e.documentNumber) === null
-                          ? '—'
-                          : isRecordable(e.documentNumber)
-                          ? <span className="badge-yes">Yes</span>
-                          : <span className="badge-no">No</span>}
-                      </td>
-                      <td>
-                        {isDART(e.documentNumber) === null
-                          ? '—'
-                          : isDART(e.documentNumber)
-                          ? <span className="badge-dart">Yes</span>
-                          : <span className="badge-no">No</span>}
-                      </td>
-                    </tr>
-                  ))}
+                {csvMatchedEvents.slice(0, 20).map(e => (
+                  <tr key={e.eventId}>
+                    <td className="doc-num">{e.documentNumber}</td>
+                    <td>{e.title?.substring(0, 40)}</td>
+                    <td>{e.dateDrafted?.substring(0, 10)}</td>
+                    <td>{e.stage?.trim()}</td>
+                    <td>
+                      {isRecordable(e.documentNumber) === null
+                        ? '—'
+                        : isRecordable(e.documentNumber)
+                        ? <span className="badge-yes">Yes</span>
+                        : <span className="badge-no">No</span>}
+                    </td>
+                    <td>
+                      {isDART(e.documentNumber) === null
+                        ? '—'
+                        : isDART(e.documentNumber)
+                        ? <span className="badge-dart">Yes</span>
+                        : <span className="badge-no">No</span>}
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
