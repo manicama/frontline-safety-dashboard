@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Papa from 'papaparse';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, Legend } from 'recharts';
 import './App.css';
@@ -41,8 +41,9 @@ function monthsBetween(from, to) {
 }
 
 export default function App() {
-  const [apiKey, setApiKey] = useState('BE83781BCE80465CBD967FBA2E14E57B');
-  const [divisionId, setDivisionId] = useState('18');
+  const [apiKey] = useState('BE83781BCE80465CBD967FBA2E14E57B');
+  const [divisions, setDivisions] = useState([]);
+  const [selectedDivision, setSelectedDivision] = useState('');
   const [events, setEvents] = useState([]);
   const [people, setPeople] = useState([]);
   const [csvData, setCsvData] = useState([]);
@@ -59,17 +60,24 @@ export default function App() {
   const [ftEmployees, setFtEmployees] = useState('');
   const [hoursPerMonth, setHoursPerMonth] = useState('');
 
+  useEffect(() => { loadData(); }, []);
+
   async function loadData() {
     setLoading(true);
     setError('');
     try {
-      const eventsRes = await fetch(`${BASE}/Events?ApiKey=${apiKey}`);
-      const eventsText = await eventsRes.text();
-      const allEvents = JSON.parse(eventsText);
+      const [eventsRes, peopleRes, divisionsRes] = await Promise.all([
+        fetch(`${BASE}/Events?ApiKey=${apiKey}`),
+        fetch(`${BASE}/Companies/2/people?ApiKey=${apiKey}`),
+        fetch(`${BASE}/Divisions?ApiKey=${apiKey}`)
+      ]);
 
-      const peopleRes = await fetch(`${BASE}/Companies/2/people?ApiKey=${apiKey}`);
-      const peopleText = await peopleRes.text();
-      const allPeople = JSON.parse(peopleText);
+      const allEvents = JSON.parse(await eventsRes.text());
+      const allPeople = JSON.parse(await peopleRes.text());
+      const allDivisions = JSON.parse(await divisionsRes.text());
+
+      const companyDivisions = allDivisions.filter(d => d.companyID === 2 && d.active === -1);
+      setDivisions(companyDivisions);
 
       const filtered = allEvents.filter(e => !e.voided);
       setEvents(filtered);
@@ -115,17 +123,21 @@ export default function App() {
   const months = monthsBetween(trirDateFrom, trirDateTo);
   const computedHours = enteredFT * enteredHoursPerMonth * months;
 
+  const selectedDivisionName = selectedDivision
+    ? divisions.find(d => String(d.divisionId) === String(selectedDivision))?.divisionName ?? 'Division'
+    : 'All Divisions';
+
   const trirFilteredEvents = events.filter(e =>
     trirDateFrom || trirDateTo
       ? inDateRange(e.dateDrafted, trirDateFrom, trirDateTo)
       : true
   );
 
-  const trendFilteredEvents = events.filter(e =>
-    trendDateFrom || trendDateTo
-      ? inDateRange(e.dateDrafted, trendDateFrom, trendDateTo)
-      : true
-  );
+  const trendFilteredEvents = events.filter(e => {
+    if (selectedDivision && String(e.divisionID) !== String(selectedDivision)) return false;
+    if (trendDateFrom || trendDateTo) return inDateRange(e.dateDrafted, trendDateFrom, trendDateTo);
+    return true;
+  });
 
   const recordable = trirFilteredEvents.filter(e => isRecordable(e.documentNumber) === true);
   const dartEvents = trirFilteredEvents.filter(e => isDART(e.documentNumber) === true);
@@ -184,17 +196,23 @@ export default function App() {
       </div>
 
       <div className="controls">
-        <div className="control-group">
-          <label>API Key</label>
-          <input value={apiKey} onChange={e => setApiKey(e.target.value)} placeholder="Enter API key" />
-        </div>
-        <div className="control-group">
-          <label>Division ID</label>
-          <input value={divisionId} onChange={e => setDivisionId(e.target.value)} placeholder="e.g. 18" style={{width: '80px'}} />
-        </div>
         <button onClick={loadData} disabled={loading}>
-          {loading ? 'Loading...' : 'Load Data'}
+          {loading ? 'Loading...' : 'Refresh'}
         </button>
+        <div className="control-group">
+          <label>Division</label>
+          <select
+            value={selectedDivision}
+            onChange={e => setSelectedDivision(e.target.value)}
+            className="division-select"
+            disabled={loading || divisions.length === 0}
+          >
+            <option value="">All Divisions</option>
+            {divisions.map(d => (
+              <option key={d.divisionId} value={d.divisionId}>{d.divisionName}</option>
+            ))}
+          </select>
+        </div>
         <div className="control-group">
           <label>Upload CSV Export</label>
           <input type="file" accept=".csv" onChange={handleCSV} />
@@ -281,7 +299,7 @@ export default function App() {
               <div className="kpi-card green">
                 <div className="kpi-label">Total Events</div>
                 <div className="kpi-value">{csvData.length ? csvMatchedEvents.length : '—'}</div>
-                <div className="kpi-sub">Division: Denver</div>
+                <div className="kpi-sub">{selectedDivisionName}</div>
               </div>
               <div className="kpi-card red">
                 <div className="kpi-label">Recordable</div>
